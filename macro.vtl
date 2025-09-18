@@ -1,0 +1,96 @@
+## Macro title: D2 Diagram
+## Macro has a body: Y
+## Body processing: Escaped
+## Macro description: Renders D2 diagrams.
+## @param theme:title=Theme|type=int|default=1|desc=D2 theme ID
+## @param layout:title=Layout|type=enum|enumValues=dagre,elk|default=elk|desc=Layout engine
+## @param server:title=Server URL|type=string|default=http://localhost:3001|desc=D2 server URL
+## @param sketch:title=Sketch|type=boolean|default=false|desc=Render as sketch
+## @param scale:title=Scale|type=string|default=0.5|desc=Diagram scale
+## @param format:title=Format|type=enum|enumValues=svg,png|default=svg|desc=Output format
+## @param direction:title=Direction|type=enum|enumValues=up,left,right,down|desc=Diagram direction
+## @param preset:title=Preset URL|type=string|desc=Preset D2 code URL: https://gist.githubusercontent.com/veschin/6a27d91abdb45ec1d4002923dca82849/raw/688899d0c711f45fe5b7457fc086b44734f8d658/styles.d2
+
+#set($containerId = "d2-" + $generalUtil.randomStringUtils.randomAlphabetic(8))
+#set($rawD2Code = $body.trim())
+
+<div id="d2code-${containerId}" style="display:none">${generalUtil.htmlEncode($rawD2Code)}</div>
+
+<div id="diagram-${containerId}" style="text-align: center; padding: 10px;">
+  <div style="color: #666; padding: 20px; text-align: center; font-family: Arial;">
+    ⏳ Loading diagram...<br/>
+    <small>Server: ${paramserver}</small>
+  </div>
+</div>
+
+<script>
+console.log('Macro script loaded');
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('DOMContentLoaded fired');
+  try {
+    var containerId = '${generalUtil.htmlEncode($containerId)}';
+    var diagramDiv = document.getElementById('diagram-' + containerId);
+    var d2CodeDiv = document.getElementById('d2code-' + containerId);
+    if (!diagramDiv || !d2CodeDiv) return;
+
+    var d2Code = d2CodeDiv.textContent;
+
+    if ('${generalUtil.htmlEncode($paramdirection)}') {
+      d2Code = 'direction: ' + '${generalUtil.htmlEncode($paramdirection)}' + '\n' + d2Code;
+    }
+
+    if (!d2Code.trim()) {
+      diagramDiv.innerHTML = '<div style="color: #d63031; padding: 20px;">❌ No D2 code found</div>';
+      return;
+    }
+
+    console.log('D2 code length:', d2Code.length);
+    console.log('Starting fetch');
+
+    var formData = new FormData();
+  formData.append('d2', d2Code);
+  formData.append('theme', '${generalUtil.htmlEncode($paramtheme)}');
+  formData.append('layout', '${generalUtil.htmlEncode($paramlayout)}');
+  formData.append('sketch', '${generalUtil.htmlEncode($paramsketch)}');
+  formData.append('scale', '${generalUtil.htmlEncode($paramscale)}');
+  if ('${generalUtil.htmlEncode($parampreset)}') {
+    formData.append('preset', '${generalUtil.htmlEncode($parampreset)}');
+  }
+
+  fetch('${generalUtil.htmlEncode($paramserver)}/${generalUtil.htmlEncode($paramformat)}', {
+    method: 'POST',
+    body: formData
+  })
+  .then(function(response) {
+    if (!response.ok) {
+      return response.text().then(function(text) {
+        throw new Error(text || 'HTTP ' + response.status);
+      });
+    }
+    return '${generalUtil.htmlEncode($paramformat)}' === 'svg' ? response.text() : response.blob();
+  })
+  .then(function(result) {
+    if ('${generalUtil.htmlEncode($paramformat)}' === 'svg') {
+      var responsiveSvg = result.replace(
+        /<svg([^>]*)>/,
+        '<svg$1 style="max-width: 100%; height: auto; display: block; margin: 0 auto;">'
+      );
+      diagramDiv.innerHTML = responsiveSvg;
+    } else {
+      var img = document.createElement('img');
+      img.src = URL.createObjectURL(result);
+      diagramDiv.innerHTML = '';
+      diagramDiv.appendChild(img);
+    }
+  })
+  .catch(function(error) {
+    var errorMsg = error.message;
+    diagramDiv.innerHTML = '<div style="color: #d63031; padding: 20px; font-family: Arial; border: 1px solid #ff6b6b; border-radius: 5px; background: #ffe6e6;">' +
+      '<strong>❌ Error</strong><br/>' + errorMsg +
+      '</div>';
+  });
+  } catch (e) {
+    diagramDiv.innerHTML = '<div style="color: #d63031; padding: 20px;">❌ JS Error: ' + e.message + '</div>';
+  }
+});
+</script>
