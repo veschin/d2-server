@@ -6,9 +6,9 @@
 ## @param layout:title=Layout|type=enum|enumValues=dagre,elk|default=elk|desc=Layout engine
 ## @param server:title=Server URL|type=string|default=http://localhost:3001|desc=D2 server URL
 ## @param sketch:title=Sketch|type=boolean|default=false|desc=Render as sketch
-## @param scale:title=Scale|type=string|default=0.5|desc=Diagram scale
+## @param scale:title=Scale|type=string|default=0.8|desc=Diagram scale
 ## @param format:title=Format|type=enum|enumValues=svg,png|default=svg|desc=Output format
-## @param direction:title=Direction|type=enum|enumValues=up,left,right,down|desc=Diagram direction
+## @param direction:title=Direction|type=enum|enumValues=up,left,right,down|default=down|desc=Diagram direction
 ## @param preset:title=Preset URL|type=string|desc=Preset D2 code URL: https://gist.githubusercontent.com/veschin/6a27d91abdb45ec1d4002923dca82849/raw/688899d0c711f45fe5b7457fc086b44734f8d658/styles.d2
 
 #set($containerId = "d2-" + $generalUtil.randomStringUtils.randomAlphabetic(8))
@@ -16,12 +16,71 @@
 
 <div id="d2code-${containerId}" style="display:none">${generalUtil.htmlEncode($rawD2Code)}</div>
 
-<div id="diagram-${containerId}" style="text-align: center; padding: 10px;">
+ <div id="diagram-${containerId}" style="text-align: center; padding: 10px;">
   <div style="color: #666; padding: 20px; text-align: center; font-family: Arial;">
     ⏳ Loading diagram...<br/>
     <small>Server: ${paramserver}</small>
   </div>
 </div>
+
+<div id="controls-${containerId}" style="text-align: center; margin-top: 10px; display: none;">
+  <div style="margin-bottom: 10px;">
+    <button id="download-svg-${containerId}" class="d2-btn" style="margin: 0 5px;">
+      <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+        <path d="M14,3V5H17.59L7.76,14.83L9.17,16.24L19,6.41V10H21V3M19,19H5V5H12V3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V12H19V19Z"/>
+      </svg>
+      SVG
+    </button>
+    <button id="download-png-${containerId}" class="d2-btn" style="margin: 0 5px;">
+      <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+        <path d="M14,3V5H17.59L7.76,14.83L9.17,16.24L19,6.41V10H21V3M19,19H5V5H12V3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V12H19V19Z"/>
+      </svg>
+      PNG
+    </button>
+    <div id="zoom-controls-${containerId}" style="display: inline-block; margin-left: 20px;">
+      <button id="zoom-in-${containerId}" class="d2-btn" style="margin: 0 2px;">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
+        </svg>
+      </button>
+      <button id="zoom-out-${containerId}" class="d2-btn" style="margin: 0 2px;">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M19,13H5V11H19V13Z"/>
+        </svg>
+      </button>
+      <span id="zoom-level-${containerId}" class="d2-status">100%</span>
+    </div>
+  </div>
+  <div class="d2-status">Theme: ${paramtheme} | Layout: ${paramlayout} | Direction: ${paramdirection} | Sketch: ${paramsketch} | Scale: ${paramscale}</div>
+</div>
+
+<style>
+  .d2-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: #f5f5f5;
+    color: #333;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: background 0.2s;
+  }
+  .d2-btn:hover {
+    background: #e0e0e0;
+  }
+  .d2-btn svg {
+    flex-shrink: 0;
+  }
+  .d2-status {
+    font-size: 11px;
+    color: #666;
+    text-align: center;
+    margin-top: 5px;
+  }
+</style>
 
 <script>
 console.log('Macro script loaded');
@@ -57,7 +116,7 @@ document.addEventListener('DOMContentLoaded', function() {
     formData.append('preset', '${generalUtil.htmlEncode($parampreset)}');
   }
 
-  fetch('${generalUtil.htmlEncode($paramserver)}/${generalUtil.htmlEncode($paramformat)}', {
+   fetch('${generalUtil.htmlEncode($paramserver)}/${generalUtil.htmlEncode($paramformat)}', {
     method: 'POST',
     body: formData
   })
@@ -69,16 +128,160 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     return '${generalUtil.htmlEncode($paramformat)}' === 'svg' ? response.text() : response.blob();
   })
+  .catch(function(error) {
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      throw new Error('Network error: Unable to connect to D2 server. Check server URL and network connection.');
+    }
+    throw error;
+  })
   .then(function(result) {
-    if ('${generalUtil.htmlEncode($paramformat)}' === 'svg') {
-      var responsiveSvg = result.replace(
+    var currentFormat = '${generalUtil.htmlEncode($paramformat)}';
+    var controlsDiv = document.getElementById('controls-' + containerId);
+    controlsDiv.style.display = 'block';
+
+    var storedResult = result;
+
+    // Download handlers
+    document.getElementById('download-svg-' + containerId).onclick = function() {
+      if (currentFormat === 'svg') {
+        var blob = new Blob([storedResult], {type: 'image/svg+xml'});
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'diagram.svg';
+        a.click();
+        URL.revokeObjectURL(url);
+      } else {
+        // Fetch SVG
+        var formDataSvg = new FormData();
+        formDataSvg.append('d2', d2Code);
+        formDataSvg.append('theme', '${generalUtil.htmlEncode($paramtheme)}');
+        formDataSvg.append('layout', '${generalUtil.htmlEncode($paramlayout)}');
+        formDataSvg.append('sketch', '${generalUtil.htmlEncode($paramsketch)}');
+        formDataSvg.append('scale', '${generalUtil.htmlEncode($paramscale)}');
+        if ('${generalUtil.htmlEncode($parampreset)}') {
+          formDataSvg.append('preset', '${generalUtil.htmlEncode($parampreset)}');
+        }
+        fetch('${generalUtil.htmlEncode($paramserver)}/svg', {
+          method: 'POST',
+          body: formDataSvg
+        }).then(function(res) {
+          return res.text();
+        }).then(function(svg) {
+          var blob = new Blob([svg], {type: 'image/svg+xml'});
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.href = url;
+          a.download = 'diagram.svg';
+          a.click();
+          URL.revokeObjectURL(url);
+        });
+      }
+    };
+
+    document.getElementById('download-png-' + containerId).onclick = function() {
+      if (currentFormat === 'png') {
+        var url = URL.createObjectURL(storedResult);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'diagram.png';
+        a.click();
+        URL.revokeObjectURL(url);
+      } else {
+        // Fetch PNG
+        var formDataPng = new FormData();
+        formDataPng.append('d2', d2Code);
+        formDataPng.append('theme', '${generalUtil.htmlEncode($paramtheme)}');
+        formDataPng.append('layout', '${generalUtil.htmlEncode($paramlayout)}');
+        formDataPng.append('sketch', '${generalUtil.htmlEncode($paramsketch)}');
+        formDataPng.append('scale', '${generalUtil.htmlEncode($paramscale)}');
+        if ('${generalUtil.htmlEncode($parampreset)}') {
+          formDataPng.append('preset', '${generalUtil.htmlEncode($parampreset)}');
+        }
+        fetch('${generalUtil.htmlEncode($paramserver)}/png', {
+          method: 'POST',
+          body: formDataPng
+        }).then(function(res) {
+          return res.blob();
+        }).then(function(blob) {
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.href = url;
+          a.download = 'diagram.png';
+          a.click();
+          URL.revokeObjectURL(url);
+        });
+      }
+    };
+
+    if (currentFormat === 'svg') {
+      var zoomControls = document.getElementById('zoom-controls-' + containerId);
+      zoomControls.style.display = 'inline-block';
+
+      var scale = 1;
+      var tx = 0, ty = 0;
+      var zoomLevelSpan = document.getElementById('zoom-level-' + containerId);
+      var svgContainer = document.createElement('div');
+      svgContainer.id = 'svg-container-' + containerId;
+      svgContainer.style.overflow = 'hidden';
+      svgContainer.style.maxWidth = '100%';
+      svgContainer.style.cursor = 'grab';
+      svgContainer.style.userSelect = 'none';
+
+      var responsiveSvg = storedResult.replace(
         /<svg([^>]*)>/,
-        '<svg$1 style="max-width: 100%; height: auto; display: block; margin: 0 auto;">'
+        '<svg$1 style="transform-origin: top left;">'
       );
-      diagramDiv.innerHTML = responsiveSvg;
+      svgContainer.innerHTML = responsiveSvg;
+      diagramDiv.innerHTML = '';
+      diagramDiv.appendChild(svgContainer);
+
+      var svgElement = svgContainer.querySelector('svg');
+      svgElement.style.transform = 'scale(' + scale + ') translate(' + tx + 'px, ' + ty + 'px)';
+
+      var isDragging = false;
+      var startX, startY;
+
+      svgContainer.onmousedown = function(e) {
+        isDragging = true;
+        startX = e.clientX - tx;
+        startY = e.clientY - ty;
+        svgContainer.style.cursor = 'grabbing';
+        e.preventDefault();
+      };
+
+      svgContainer.onmousemove = function(e) {
+        if (isDragging) {
+          tx = (e.clientX - startX) * 0.5;
+          ty = (e.clientY - startY) * 0.5;
+          svgElement.style.transform = 'scale(' + scale + ') translate(' + tx + 'px, ' + ty + 'px)';
+        }
+      };
+
+      svgContainer.onmouseup = function() {
+        isDragging = false;
+        svgContainer.style.cursor = 'grab';
+      };
+
+      svgContainer.onmouseleave = function() {
+        isDragging = false;
+        svgContainer.style.cursor = 'grab';
+      };
+
+      document.getElementById('zoom-in-' + containerId).onclick = function() {
+        scale *= 1.2;
+        svgElement.style.transform = 'scale(' + scale + ') translate(' + tx + 'px, ' + ty + 'px)';
+        zoomLevelSpan.textContent = Math.round(scale * 100) + '%';
+      };
+
+      document.getElementById('zoom-out-' + containerId).onclick = function() {
+        scale /= 1.2;
+        svgElement.style.transform = 'scale(' + scale + ') translate(' + tx + 'px, ' + ty + 'px)';
+        zoomLevelSpan.textContent = Math.round(scale * 100) + '%';
+      };
     } else {
       var img = document.createElement('img');
-      img.src = URL.createObjectURL(result);
+      img.src = URL.createObjectURL(storedResult);
       diagramDiv.innerHTML = '';
       diagramDiv.appendChild(img);
     }
