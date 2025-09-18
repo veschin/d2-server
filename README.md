@@ -7,7 +7,7 @@ A Clojure-based server for rendering D2 diagrams and a Confluence user macro for
 ### D2 Parameters Support
 - [x] theme (int, default 1)
 - [x] layout (enum: dagre, elk, default elk)
-- [x] server (string, default http://localhost:3001)
+- [x] server (string, default http://localhost:3000)
 - [x] sketch (boolean, default false)
 - [x] scale (float, default 0.8)
 - [x] format (enum: svg, png, default svg)
