@@ -1,0 +1,424 @@
+openapi: 3.0.3
+info:
+  title: D2 Server API
+  description: API for rendering D2 diagrams
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000
+paths:
+  /:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  service:
+                    type: string
+                    example: d2server
+  /render:
+    get:
+      summary: Render D2 diagram
+      parameters:
+        - name: d2
+          in: query
+          required: true
+          schema:
+            type: string
+          description: D2 code to render
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [svg, png]
+            default: svg
+          description: Output format
+        - name: theme
+          in: query
+          schema:
+            type: integer
+            default: 1
+          description: Theme ID
+        - name: layout
+          in: query
+          schema:
+            type: string
+            default: dagre
+          description: Layout engine
+        - name: preset
+          in: query
+          schema:
+            type: string
+          description: Preset D2 code URL
+        - name: sketch
+          in: query
+          schema:
+            type: boolean
+            default: false
+          description: Enable sketch mode
+        - name: scale
+          in: query
+          schema:
+            type: number
+            format: double
+            default: 1.0
+          description: Scale factor
+      responses:
+        '200':
+          description: Rendered diagram
+          content:
+            image/svg+xml:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Missing d2 parameter
+          content:
+            text/plain:
+              schema:
+                type: string
+        '500':
+          description: Rendering error
+          content:
+            text/plain:
+              schema:
+                type: string
+    post:
+      summary: Render D2 diagram (POST)
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                d2:
+                  type: string
+                format:
+                  type: string
+                  enum: [svg, png]
+                theme:
+                  type: integer
+                layout:
+                  type: string
+                preset:
+                  type: string
+                sketch:
+                  type: boolean
+                scale:
+                  type: number
+                  format: double
+              required:
+                - d2
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                d2:
+                  type: string
+                format:
+                  type: string
+                  enum: [svg, png]
+                theme:
+                  type: integer
+                layout:
+                  type: string
+                preset:
+                  type: string
+                sketch:
+                  type: boolean
+                scale:
+                  type: number
+                  format: double
+              required:
+                - d2
+      responses:
+        '200':
+          description: Rendered diagram
+          content:
+            image/svg+xml:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Missing d2 parameter
+          content:
+            text/plain:
+              schema:
+                type: string
+        '500':
+          description: Rendering error
+          content:
+            text/plain:
+              schema:
+                type: string
+  /svg:
+    get:
+      summary: Render D2 as SVG
+      parameters:
+        - name: d2
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: theme
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: layout
+          in: query
+          schema:
+            type: string
+            default: dagre
+        - name: preset
+          in: query
+          schema:
+            type: string
+        - name: sketch
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: scale
+          in: query
+          schema:
+            type: number
+            format: double
+            default: 1.0
+      responses:
+        '200':
+          description: SVG diagram
+          content:
+            image/svg+xml:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Missing d2 parameter
+        '500':
+          description: Rendering error
+    post:
+      summary: Render D2 as SVG (POST)
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                d2:
+                  type: string
+                theme:
+                  type: integer
+                layout:
+                  type: string
+                preset:
+                  type: string
+                sketch:
+                  type: boolean
+                scale:
+                  type: number
+                  format: double
+              required:
+                - d2
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                d2:
+                  type: string
+                theme:
+                  type: integer
+                layout:
+                  type: string
+                preset:
+                  type: string
+                sketch:
+                  type: boolean
+                scale:
+                  type: number
+                  format: double
+              required:
+                - d2
+      responses:
+        '200':
+          description: SVG diagram
+          content:
+            image/svg+xml:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Missing d2 parameter
+        '500':
+          description: Rendering error
+  /png:
+    get:
+      summary: Render D2 as PNG
+      parameters:
+        - name: d2
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: theme
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: layout
+          in: query
+          schema:
+            type: string
+            default: dagre
+        - name: preset
+          in: query
+          schema:
+            type: string
+        - name: sketch
+          in: query
+          schema:
+            type: boolean
+            default: false
+        - name: scale
+          in: query
+          schema:
+            type: number
+            format: double
+            default: 1.0
+      responses:
+        '200':
+          description: PNG diagram
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Missing d2 parameter
+        '500':
+          description: Rendering error
+    post:
+      summary: Render D2 as PNG (POST)
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                d2:
+                  type: string
+                theme:
+                  type: integer
+                layout:
+                  type: string
+                preset:
+                  type: string
+                sketch:
+                  type: boolean
+                scale:
+                  type: number
+                  format: double
+              required:
+                - d2
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                d2:
+                  type: string
+                theme:
+                  type: integer
+                layout:
+                  type: string
+                preset:
+                  type: string
+                sketch:
+                  type: boolean
+                scale:
+                  type: number
+                  format: double
+              required:
+                - d2
+      responses:
+        '200':
+          description: PNG diagram
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Missing d2 parameter
+        '500':
+          description: Rendering error
+  /format:
+    get:
+      summary: Format D2 code
+      parameters:
+        - name: d2
+          in: query
+          required: true
+          schema:
+            type: string
+          description: D2 code to format
+      responses:
+        '200':
+          description: Formatted D2 code
+          content:
+            text/plain:
+              schema:
+                type: string
+        '400':
+          description: Missing d2 parameter
+          content:
+            text/plain:
+              schema:
+                type: string
+    post:
+      summary: Format D2 code (POST)
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                d2:
+                  type: string
+              required:
+                - d2
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                d2:
+                  type: string
+              required:
+                - d2
+      responses:
+        '200':
+          description: Formatted D2 code
+          content:
+            text/plain:
+              schema:
+                type: string
+        '400':
+          description: Missing d2 parameter
+          content:
+            text/plain:
+              schema:
+                type: string
