@@ -9,9 +9,9 @@ A Clojure-based server for rendering D2 diagrams and a Confluence user macro for
 - [x] layout (enum: dagre, elk, default elk)
 - [x] server (string, default http://localhost:3001)
 - [x] sketch (boolean, default false)
-- [x] scale (float, default 0.5)
+- [x] scale (float, default 0.8)
 - [x] format (enum: svg, png, default svg)
-- [x] direction (enum: up, left, right, down)
+- [x] direction (enum: up, left, right, down, default down)
 - [x] preset (string, URL to preset D2 code)
 
 ### API Endpoints
@@ -25,19 +25,50 @@ A Clojure-based server for rendering D2 diagrams and a Confluence user macro for
 - [x] Confluence user macro integration
 - [x] Error handling and CORS support
 - [x] D2 binary integration
-- [ ] Swagger API docs (TODO)
-
-## API Docs
-
-API documentation available at `/swagger` when server is running.
+- [x] Zoom panel with pan for SVG diagrams
+- [x] Download buttons for SVG/PNG formats
+- [x] Status display of current parameters
+- [x] Improved error handling with network error detection
 
 ## Macro Parameters
 
 - theme: D2 theme ID (int, default 1)
 - layout: Layout engine (dagre/elk, default elk)
-- server: Server URL (string, default http://localhost:3001)
+- server: Server URL (string, default http://localhost:3000)
 - sketch: Render as sketch (boolean, default false)
-- scale: Scale factor (string, default 0.5)
+- scale: Scale factor (string, default 0.8)
 - format: Output format (svg/png, default svg)
-- direction: Diagram direction (up/left/right/down)
+- direction: Diagram direction (up/left/right/down, default down)
 - preset: Preset D2 code URL (string)
+
+## Build Instructions
+
+### Development
+
+Run the server locally:
+```
+make run
+```
+
+### Production Build
+
+Build uberjar:
+```
+make uberjar
+```
+
+### Docker
+
+Build Docker image:
+```
+make docker-build
+```
+
+Run and test Docker container:
+```
+make docker-run
+```
+
+## Known Issues
+
+- GraalVM native image build is currently not working
