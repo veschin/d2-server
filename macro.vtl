@@ -11,236 +11,164 @@
 ## @param direction:title=Direction|type=enum|enumValues=up,left,right,down|default=down|desc=Diagram direction
 ## @param preset:title=Preset URL|type=string|desc=Preset D2 code URL: https://gist.githubusercontent.com/veschin/6a27d91abdb45ec1d4002923dca82849/raw/688899d0c711f45fe5b7457fc086b44734f8d658/styles.d2
 
-#set($containerId = "d2-" + $generalUtil.randomStringUtils.randomAlphabetic(8))
 #set($rawD2Code = $body.trim())
 
-<div id="d2code-${containerId}" style="display:none">${generalUtil.htmlEncode($rawD2Code)}</div>
+<div class="d2-macro">
+  <div class="d2-code" style="display:none">${generalUtil.htmlEncode($rawD2Code)}</div>
 
- <div id="diagram-${containerId}" style="text-align: center; padding: 10px;">
-  <div style="color: #666; padding: 20px; text-align: center; font-family: Arial;">
-    ⏳ Loading diagram...<br/>
-    <small>Server: ${paramserver}</small>
-  </div>
-</div>
-
-<div id="controls-${containerId}" style="text-align: center; margin-top: 10px; display: none;">
-  <div style="margin-bottom: 10px;">
-    <button id="download-svg-${containerId}" class="d2-btn" style="margin: 0 5px;">
-      <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
-        <path d="M14,3V5H17.59L7.76,14.83L9.17,16.24L19,6.41V10H21V3M19,19H5V5H12V3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V12H19V19Z"/>
-      </svg>
-      SVG
-    </button>
-    <button id="download-png-${containerId}" class="d2-btn" style="margin: 0 5px;">
-      <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
-        <path d="M14,3V5H17.59L7.76,14.83L9.17,16.24L19,6.41V10H21V3M19,19H5V5H12V3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V12H19V19Z"/>
-      </svg>
-      PNG
-    </button>
-    <div id="zoom-controls-${containerId}" style="display: inline-block; margin-left: 20px;">
-      <button id="zoom-in-${containerId}" class="d2-btn" style="margin: 0 2px;">
-        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
-        </svg>
-      </button>
-      <button id="zoom-out-${containerId}" class="d2-btn" style="margin: 0 2px;">
-        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M19,13H5V11H19V13Z"/>
-        </svg>
-      </button>
-      <span id="zoom-level-${containerId}" class="d2-status">100%</span>
+  <div class="d2-diagram" style="text-align: center; padding: 10px;">
+    <div style="color: #666; padding: 20px; text-align: center; font-family: Arial;">
+      ⏳ Loading diagram...<br/>
+      <small>Server: ${paramserver}</small>
     </div>
   </div>
-  <div class="d2-status">Theme: ${paramtheme} | Layout: ${paramlayout} | Direction: ${paramdirection} | Sketch: ${paramsketch} | Scale: ${paramscale}</div>
-</div>
 
-<style>
-  .d2-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 8px;
-    background: #f5f5f5;
-    color: #333;
-    border: 1px solid #ccc;
-    border-radius: 3px;
-    cursor: pointer;
-    font-size: 12px;
-    transition: background 0.2s;
-  }
-  .d2-btn:hover {
-    background: #e0e0e0;
-  }
-  .d2-btn svg {
-    flex-shrink: 0;
-  }
-  .d2-status {
-    font-size: 11px;
-    color: #666;
-    text-align: center;
-    margin-top: 5px;
-  }
-</style>
+  <div class="d2-controls" style="text-align: center; margin-top: 10px;">
+    <div style="margin-bottom: 10px; display: flex; justify-content: center; align-items: center; gap: 10px;">
+      <button class="d2-btn toggle-diagram">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+        </svg>
+        toggle
+      </button>
+      <button class="d2-btn download-svg">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M14,3V5H17.59L7.76,14.83L9.17,16.24L19,6.41V10H21V3M19,19H5V5H12V3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V12H19V19Z"/>
+        </svg>
+        SVG
+      </button>
+      <button class="d2-btn download-png">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M14,3V5H17.59L7.76,14.83L9.17,16.24L19,6.41V10H21V3M19,19H5V5H12V3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V12H19V19Z"/>
+        </svg>
+        PNG
+      </button>
+      <button class="d2-btn zoom-in">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 5 1.5-1.5-5-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14zm2.5-4h-2v2H9v-2H7V9h2V7h1v2h2v1z"/>
+        </svg>
+      </button>
+      <button class="d2-btn zoom-out">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 5 1.5-1.5-5-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14zM7 9h5v1H7z"/>
+        </svg>
+      </button>
+      <button class="d2-btn zoom-reset">
+        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+        </svg>
+      </button>
+      <span class="d2-status zoom-level">100%</span>
+    </div>
+    <div class="d2-status">Theme: ${paramtheme} | Layout: ${paramlayout} | Direction: ${paramdirection} | Sketch: ${paramsketch} | Scale: ${paramscale}</div>
+  </div>
 
 <script>
-console.log('Macro script loaded');
-document.addEventListener('DOMContentLoaded', function() {
-  console.log('DOMContentLoaded fired');
-  try {
-    var containerId = '${generalUtil.htmlEncode($containerId)}';
-    var diagramDiv = document.getElementById('diagram-' + containerId);
-    var d2CodeDiv = document.getElementById('d2code-' + containerId);
-    if (!diagramDiv || !d2CodeDiv) return;
-
-    var d2Code = d2CodeDiv.textContent;
-
-    if ('${generalUtil.htmlEncode($paramdirection)}') {
-      d2Code = 'direction: ' + '${generalUtil.htmlEncode($paramdirection)}' + '\n' + d2Code;
+(function() {
+  // Utility functions
+  async function calculateHash(d2Code, params) {
+    try {
+      const data = d2Code + JSON.stringify(params);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(data));
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    } catch (e) {
+      console.warn('SHA-256 not available, using fallback hash:', e);
+      let hash = 0;
+      const str = d2Code + JSON.stringify(params);
+      for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+      }
+      return Math.abs(hash).toString(16);
     }
-
-    if (!d2Code.trim()) {
-      diagramDiv.innerHTML = '<div style="color: #d63031; padding: 20px;">❌ No D2 code found</div>';
-      return;
-    }
-
-    console.log('D2 code length:', d2Code.length);
-    console.log('Starting fetch');
-
-    var formData = new FormData();
-  formData.append('d2', d2Code);
-  formData.append('theme', '${generalUtil.htmlEncode($paramtheme)}');
-  formData.append('layout', '${generalUtil.htmlEncode($paramlayout)}');
-  formData.append('sketch', '${generalUtil.htmlEncode($paramsketch)}');
-  formData.append('scale', '${generalUtil.htmlEncode($paramscale)}');
-  if ('${generalUtil.htmlEncode($parampreset)}') {
-    formData.append('preset', '${generalUtil.htmlEncode($parampreset)}');
   }
 
-   fetch('${generalUtil.htmlEncode($paramserver)}/${generalUtil.htmlEncode($paramformat)}', {
-    method: 'POST',
-    body: formData
-  })
-  .then(function(response) {
-    if (!response.ok) {
-      return response.text().then(function(text) {
-        throw new Error(text || 'HTTP ' + response.status);
-      });
-    }
-    return '${generalUtil.htmlEncode($paramformat)}' === 'svg' ? response.text() : response.blob();
-  })
-  .catch(function(error) {
-    if (error.name === 'TypeError' && error.message.includes('fetch')) {
-      throw new Error('Network error: Unable to connect to D2 server. Check server URL and network connection.');
-    }
-    throw error;
-  })
-  .then(function(result) {
-    var currentFormat = '${generalUtil.htmlEncode($paramformat)}';
-    var controlsDiv = document.getElementById('controls-' + containerId);
+  // IndexedDB helpers
+  function openCacheDB() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open('d2-cache', 1);
+      request.onupgradeneeded = event => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains('diagrams')) {
+          db.createObjectStore('diagrams', { keyPath: 'hash' });
+        }
+      };
+      request.onsuccess = event => resolve(event.target.result);
+      request.onerror = event => reject(event.target.error);
+    });
+  }
+
+  async function getCachedDiagram(hash) {
+    const db = await openCacheDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['diagrams'], 'readonly');
+      const store = transaction.objectStore('diagrams');
+      const request = store.get(hash);
+      request.onsuccess = event => resolve(event.target.result);
+      request.onerror = event => reject(event.target.error);
+    });
+  }
+
+  async function setCachedDiagram(hash, result, format) {
+    const db = await openCacheDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['diagrams'], 'readwrite');
+      const store = transaction.objectStore('diagrams');
+      const item = { hash, result, format, timestamp: Date.now() };
+      const request = store.put(item);
+      request.onsuccess = () => resolve();
+      request.onerror = event => reject(event.target.error);
+    });
+  }
+
+  // Render diagram
+  async function renderDiagram(result, format, containerId, d2Code, params, macroDiv) {
+    const diagramDiv = macroDiv.querySelector('.d2-diagram');
+    const controlsDiv = macroDiv.querySelector('.d2-controls');
     controlsDiv.style.display = 'block';
 
-    var storedResult = result;
+    const diagramVisibleKey = 'diagram-visible-' + containerId;
+    const savedVisible = localStorage.getItem(diagramVisibleKey) !== 'false';
+    diagramDiv.style.display = savedVisible ? 'block' : 'none';
 
-    // Download handlers
-    document.getElementById('download-svg-' + containerId).onclick = function() {
-      if (currentFormat === 'svg') {
-        var blob = new Blob([storedResult], {type: 'image/svg+xml'});
-        var url = URL.createObjectURL(blob);
-        var a = document.createElement('a');
-        a.href = url;
-        a.download = 'diagram.svg';
-        a.click();
-        URL.revokeObjectURL(url);
-      } else {
-        // Fetch SVG
-        var formDataSvg = new FormData();
-        formDataSvg.append('d2', d2Code);
-        formDataSvg.append('theme', '${generalUtil.htmlEncode($paramtheme)}');
-        formDataSvg.append('layout', '${generalUtil.htmlEncode($paramlayout)}');
-        formDataSvg.append('sketch', '${generalUtil.htmlEncode($paramsketch)}');
-        formDataSvg.append('scale', '${generalUtil.htmlEncode($paramscale)}');
-        if ('${generalUtil.htmlEncode($parampreset)}') {
-          formDataSvg.append('preset', '${generalUtil.htmlEncode($parampreset)}');
-        }
-        fetch('${generalUtil.htmlEncode($paramserver)}/svg', {
-          method: 'POST',
-          body: formDataSvg
-        }).then(function(res) {
-          return res.text();
-        }).then(function(svg) {
-          var blob = new Blob([svg], {type: 'image/svg+xml'});
-          var url = URL.createObjectURL(blob);
-          var a = document.createElement('a');
-          a.href = url;
-          a.download = 'diagram.svg';
-          a.click();
-          URL.revokeObjectURL(url);
-        });
-      }
-    };
-
-    document.getElementById('download-png-' + containerId).onclick = function() {
-      if (currentFormat === 'png') {
-        var url = URL.createObjectURL(storedResult);
-        var a = document.createElement('a');
-        a.href = url;
-        a.download = 'diagram.png';
-        a.click();
-        URL.revokeObjectURL(url);
-      } else {
-        // Fetch PNG
-        var formDataPng = new FormData();
-        formDataPng.append('d2', d2Code);
-        formDataPng.append('theme', '${generalUtil.htmlEncode($paramtheme)}');
-        formDataPng.append('layout', '${generalUtil.htmlEncode($paramlayout)}');
-        formDataPng.append('sketch', '${generalUtil.htmlEncode($paramsketch)}');
-        formDataPng.append('scale', '${generalUtil.htmlEncode($paramscale)}');
-        if ('${generalUtil.htmlEncode($parampreset)}') {
-          formDataPng.append('preset', '${generalUtil.htmlEncode($parampreset)}');
-        }
-        fetch('${generalUtil.htmlEncode($paramserver)}/png', {
-          method: 'POST',
-          body: formDataPng
-        }).then(function(res) {
-          return res.blob();
-        }).then(function(blob) {
-          var url = URL.createObjectURL(blob);
-          var a = document.createElement('a');
-          a.href = url;
-          a.download = 'diagram.png';
-          a.click();
-          URL.revokeObjectURL(url);
-        });
-      }
-    };
-
-    if (currentFormat === 'svg') {
-      var zoomControls = document.getElementById('zoom-controls-' + containerId);
-      zoomControls.style.display = 'inline-block';
-
-      var scale = 1;
-      var tx = 0, ty = 0;
-      var zoomLevelSpan = document.getElementById('zoom-level-' + containerId);
-      var svgContainer = document.createElement('div');
+    if (format === 'svg') {
+      let scale = 1;
+      let tx = 0, ty = 0;
+      const zoomLevelSpan = macroDiv.querySelector('.zoom-level');
+      const svgContainer = document.createElement('div');
       svgContainer.id = 'svg-container-' + containerId;
       svgContainer.style.overflow = 'hidden';
       svgContainer.style.maxWidth = '100%';
       svgContainer.style.cursor = 'grab';
       svgContainer.style.userSelect = 'none';
+      svgContainer.style.border = '1px solid #e0e0e0';
+      svgContainer.style.borderRadius = '4px';
+      svgContainer.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
 
-      var responsiveSvg = storedResult.replace(
+      const responsiveSvg = result.replace(
         /<svg([^>]*)>/,
         '<svg$1 style="transform-origin: top left;">'
       );
       svgContainer.innerHTML = responsiveSvg;
       diagramDiv.innerHTML = '';
       diagramDiv.appendChild(svgContainer);
+      diagramDiv.style.display = savedVisible ? 'block' : 'none';
 
-      var svgElement = svgContainer.querySelector('svg');
-      svgElement.style.transform = 'scale(' + scale + ') translate(' + tx + 'px, ' + ty + 'px)';
+      const svgElement = svgContainer.querySelector('svg');
 
-      var isDragging = false;
-      var startX, startY;
+      // Restore pan zoom
+      const panZoomKey = 'panzoom-' + containerId;
+      const saved = JSON.parse(localStorage.getItem(panZoomKey) || '{}');
+      scale = saved.scale || 1;
+      tx = saved.tx || 0;
+      ty = saved.ty || 0;
+      svgElement.style.transform = `scale(${scale}) translate(${tx}px, ${ty}px)`;
+      zoomLevelSpan.textContent = Math.round(scale * 100) + '%';
+
+      let isDragging = false;
+      let startX, startY;
 
       svgContainer.onmousedown = function(e) {
         isDragging = true;
@@ -252,9 +180,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
       svgContainer.onmousemove = function(e) {
         if (isDragging) {
-          tx = (e.clientX - startX) * 0.5;
-          ty = (e.clientY - startY) * 0.5;
-          svgElement.style.transform = 'scale(' + scale + ') translate(' + tx + 'px, ' + ty + 'px)';
+          tx = e.clientX - startX;
+          ty = e.clientY - startY;
+          svgElement.style.transform = `scale(${scale}) translate(${tx}px, ${ty}px)`;
+          localStorage.setItem(panZoomKey, JSON.stringify({ tx, ty, scale }));
         }
       };
 
@@ -268,32 +197,252 @@ document.addEventListener('DOMContentLoaded', function() {
         svgContainer.style.cursor = 'grab';
       };
 
-      document.getElementById('zoom-in-' + containerId).onclick = function() {
+      macroDiv.querySelector('.zoom-in').onclick = function() {
         scale *= 1.2;
-        svgElement.style.transform = 'scale(' + scale + ') translate(' + tx + 'px, ' + ty + 'px)';
+        svgElement.style.transform = `scale(${scale}) translate(${tx}px, ${ty}px)`;
         zoomLevelSpan.textContent = Math.round(scale * 100) + '%';
+        localStorage.setItem(panZoomKey, JSON.stringify({ tx, ty, scale }));
       };
 
-      document.getElementById('zoom-out-' + containerId).onclick = function() {
+      macroDiv.querySelector('.zoom-out').onclick = function() {
         scale /= 1.2;
-        svgElement.style.transform = 'scale(' + scale + ') translate(' + tx + 'px, ' + ty + 'px)';
+        svgElement.style.transform = `scale(${scale}) translate(${tx}px, ${ty}px)`;
         zoomLevelSpan.textContent = Math.round(scale * 100) + '%';
+        localStorage.setItem(panZoomKey, JSON.stringify({ tx, ty, scale }));
+      };
+
+      macroDiv.querySelector('.zoom-reset').onclick = function() {
+        scale = 1;
+        tx = 0;
+        ty = 0;
+        svgElement.style.transform = `scale(${scale}) translate(${tx}px, ${ty}px)`;
+        zoomLevelSpan.textContent = '100%';
+        localStorage.setItem(panZoomKey, JSON.stringify({ tx, ty, scale }));
+      };
+
+      macroDiv.querySelector('.toggle-diagram').onclick = function() {
+        const isVisible = diagramDiv.style.display !== 'none';
+        diagramDiv.style.display = isVisible ? 'none' : 'block';
+        localStorage.setItem(diagramVisibleKey, !isVisible);
+        const toggleBtn = macroDiv.querySelector('.toggle-diagram');
+        toggleBtn.style.background = !isVisible ? '#f5f5f5' : '#ccc';
       };
     } else {
-      var img = document.createElement('img');
-      img.src = URL.createObjectURL(storedResult);
+      const img = document.createElement('img');
+      img.src = URL.createObjectURL(result);
+      img.style.border = '1px solid #e0e0e0';
+      img.style.borderRadius = '4px';
+      img.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
       diagramDiv.innerHTML = '';
       diagramDiv.appendChild(img);
+      diagramDiv.style.display = savedVisible ? 'block' : 'none';
+
+      // For PNG, disable zoom buttons
+      macroDiv.querySelector('.zoom-in').style.display = 'none';
+      macroDiv.querySelector('.zoom-out').style.display = 'none';
+      macroDiv.querySelector('.zoom-reset').style.display = 'none';
+      macroDiv.querySelector('.zoom-level').style.display = 'none';
+
+      macroDiv.querySelector('.toggle-diagram').onclick = function() {
+        const isVisible = diagramDiv.style.display !== 'none';
+        diagramDiv.style.display = isVisible ? 'none' : 'block';
+        localStorage.setItem(diagramVisibleKey, !isVisible);
+        const toggleBtn = macroDiv.querySelector('.toggle-diagram');
+        toggleBtn.style.background = !isVisible ? '#f5f5f5' : '#ccc';
+      };
     }
-  })
-  .catch(function(error) {
-    var errorMsg = error.message;
-    diagramDiv.innerHTML = '<div style="color: #d63031; padding: 20px; font-family: Arial; border: 1px solid #ff6b6b; border-radius: 5px; background: #ffe6e6;">' +
-      '<strong>❌ Error</strong><br/>' + errorMsg +
-      '</div>';
-  });
-  } catch (e) {
-    diagramDiv.innerHTML = '<div style="color: #d63031; padding: 20px;">❌ JS Error: ' + e.message + '</div>';
+
+    const toggleBtn = macroDiv.querySelector('.toggle-diagram');
+    toggleBtn.style.background = savedVisible ? '#f5f5f5' : '#ccc';
+
+    // Setup download handlers
+    setupDownloadHandlers(d2Code, params, format, containerId, result, macroDiv);
+
+    // Setup download handlers
+    setupDownloadHandlers(d2Code, params, format, containerId, result, macroDiv);
   }
-});
+
+  // Fetch diagram
+  async function fetchDiagram(d2Code, params, hash, format, containerId, macroDiv) {
+    const formData = new FormData();
+    formData.append('d2', d2Code);
+    formData.append('theme', params.theme);
+    formData.append('layout', params.layout);
+    formData.append('sketch', params.sketch);
+    formData.append('scale', params.scale);
+    if (params.preset) {
+      formData.append('preset', params.preset);
+    }
+
+    const response = await fetch('${generalUtil.htmlEncode($paramserver)}/' + format, {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'HTTP ' + response.status);
+    }
+
+    const result = format === 'svg' ? await response.text() : await response.blob();
+    await setCachedDiagram(hash, result, format);
+    await renderDiagram(result, format, containerId, d2Code, params, macroDiv);
+  }
+
+  function setupDownloadHandlers(d2Code, params, format, containerId, storedResult, macroDiv) {
+    macroDiv.querySelector('.download-svg').onclick = async function() {
+      if (format === 'svg') {
+        const blob = new Blob([storedResult], { type: 'image/svg+xml' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'diagram.svg';
+        a.click();
+        URL.revokeObjectURL(url);
+      } else {
+        // Fetch SVG on demand
+        const formDataSvg = new FormData();
+        formDataSvg.append('d2', d2Code);
+        formDataSvg.append('theme', params.theme);
+        formDataSvg.append('layout', params.layout);
+        formDataSvg.append('sketch', params.sketch);
+        formDataSvg.append('scale', params.scale);
+        if (params.preset) {
+          formDataSvg.append('preset', params.preset);
+        }
+        const res = await fetch('${generalUtil.htmlEncode($paramserver)}/svg', {
+          method: 'POST',
+          body: formDataSvg
+        });
+        const svg = await res.text();
+        const blob = new Blob([svg], { type: 'image/svg+xml' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'diagram.svg';
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    };
+
+    macroDiv.querySelector('.download-png').onclick = async function() {
+      if (format === 'png') {
+        const url = URL.createObjectURL(storedResult);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'diagram.png';
+        a.click();
+        URL.revokeObjectURL(url);
+      } else {
+        // Fetch PNG on demand
+        const formDataPng = new FormData();
+        formDataPng.append('d2', d2Code);
+        formDataPng.append('theme', params.theme);
+        formDataPng.append('layout', params.layout);
+        formDataPng.append('sketch', params.sketch);
+        formDataPng.append('scale', params.scale);
+        if (params.preset) {
+          formDataPng.append('preset', params.preset);
+        }
+        const res = await fetch('${generalUtil.htmlEncode($paramserver)}/png', {
+          method: 'POST',
+          body: formDataPng
+        });
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'diagram.png';
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    };
+  }
+
+  // Main function
+  async function initDiagram(macroDiv) {
+    console.log('Macro script loaded');
+    const containerId = 'd2-' + Math.random().toString(36).substr(2, 9);
+    const diagramDiv = macroDiv.querySelector('.d2-diagram');
+    const d2CodeDiv = macroDiv.querySelector('.d2-code');
+    if (!diagramDiv || !d2CodeDiv) return;
+
+    const diagramVisibleKey = 'diagram-visible-' + containerId;
+    const savedVisible = localStorage.getItem(diagramVisibleKey) !== 'false';
+    diagramDiv.style.display = savedVisible ? 'block' : 'none';
+
+    let d2Code = d2CodeDiv.textContent;
+    if ('${generalUtil.htmlEncode($paramdirection)}') {
+      d2Code = 'direction: ' + '${generalUtil.htmlEncode($paramdirection)}' + '\n' + d2Code;
+    }
+
+    if (!d2Code.trim()) {
+      diagramDiv.innerHTML = '<div style="color: #d63031; padding: 20px;">❌ No D2 code found</div>';
+      return;
+    }
+
+    console.log('D2 code length:', d2Code.length);
+
+    const params = {
+      theme: '${generalUtil.htmlEncode($paramtheme)}',
+      layout: '${generalUtil.htmlEncode($paramlayout)}',
+      sketch: '${generalUtil.htmlEncode($paramsketch)}',
+      scale: '${generalUtil.htmlEncode($paramscale)}',
+      direction: '${generalUtil.htmlEncode($paramdirection)}',
+      preset: '${generalUtil.htmlEncode($parampreset)}'
+    };
+
+    const hash = await calculateHash(d2Code, params);
+    const cached = await getCachedDiagram(hash);
+
+    if (cached && cached.format === '${generalUtil.htmlEncode($paramformat)}') {
+      console.log('Using cached diagram');
+      await renderDiagram(cached.result, '${generalUtil.htmlEncode($paramformat)}', containerId, d2Code, params, macroDiv);
+    } else {
+      console.log('Fetching diagram');
+      await fetchDiagram(d2Code, params, hash, '${generalUtil.htmlEncode($paramformat)}', containerId, macroDiv);
+    }
+  }
+
+  // Find the macro div and initialize
+  const script = document.currentScript;
+  const macroDiv = script.parentElement;
+  if (macroDiv && macroDiv.classList.contains('d2-macro')) {
+    initDiagram(macroDiv).catch(e => {
+      const diagramDiv = macroDiv.querySelector('.d2-diagram');
+      if (diagramDiv) {
+        diagramDiv.innerHTML = '<div style="color: #d63031; padding: 20px;">❌ JS Error: ' + e.message + '</div>';
+      }
+    });
+  }
+})();
 </script>
+</div>
+
+<style>
+   .d2-btn {
+     display: inline-flex;
+     align-items: center;
+     gap: 4px;
+     padding: 4px 8px;
+     background: #f5f5f5;
+     color: #333;
+     border: 1px solid #ccc;
+     border-radius: 3px;
+     cursor: pointer;
+     font-size: 12px;
+     transition: background 0.2s;
+   }
+   .d2-btn:hover {
+     background: #e0e0e0;
+   }
+   .d2-btn svg {
+     flex-shrink: 0;
+   }
+   .d2-status {
+     font-size: 11px;
+     color: #666;
+     text-align: center;
+     margin-top: 5px;
+   }
+ </style>

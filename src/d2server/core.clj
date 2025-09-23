@@ -140,7 +140,8 @@
     (if (empty? d2-code)
       (-> (response/response "Missing d2 parameter")
           (response/status 400)
-          (response/content-type "text/plain"))
+          (response/content-type "text/plain")
+          (response/header "Access-Control-Allow-Origin" "*"))
 
       (let [result (render-d2 d2-code format
                               :theme theme
@@ -155,7 +156,8 @@
               (response/header "Cache-Control" "public, max-age=3600"))
           (-> (response/response (:error result))
               (response/status 500)
-              (response/content-type "text/plain")))))))
+              (response/content-type "text/plain")
+              (response/header "Access-Control-Allow-Origin" "*")))))))
 
 (defn handle-health
   "Health check endpoint"
@@ -172,7 +174,8 @@
     (if (empty? d2-code)
       (-> (response/response "Missing d2 parameter")
           (response/status 400)
-          (response/content-type "text/plain"))
+          (response/content-type "text/plain")
+          (response/header "Access-Control-Allow-Origin" "*"))
 
       (let [decoded-code (decode-html-entities d2-code)
             formatted-code (format-d2-code decoded-code)]
