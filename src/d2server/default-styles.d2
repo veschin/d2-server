@@ -1,0 +1,172 @@
+classes: {
+  *: {style.stroke-width: 0}
+  user: {
+    shape: c4-person
+    width: 140
+    height: 100
+    style: {
+      border-radius: 10
+      fill: "#c1d3fe"
+      shadow: true
+    }
+  }
+  base: {
+    width: 160
+    height: 70
+    style: {
+      border-radius: 10
+      fill: "#c1d3fe"
+      shadow: true
+    }
+  }
+  front: {
+    shape: document
+    width: 200
+    height: 70
+    style: {
+      fill: "#b6ccfe"
+      stroke: "#9bb1ff"
+      stroke-width: 4
+      shadow: true
+    }
+  }
+  group: {
+    label.near: outside-top-center
+    grid-columns: 3
+    style: {
+      font-size: 25
+      border-radius: 10
+      fill: white
+      stroke: "#7d8597"
+    }
+  }
+
+  external: {
+    width: 160
+    height: 70
+    style: {
+      border-radius: 10
+      fill: "#7d8597"
+      shadow: true
+      stroke-width: 4
+      stroke: "#666c7a"
+      font-color: white
+    }
+  }
+  database: {
+    shape: cylinder
+    width: 160
+    height: 140
+    style: {
+      border-radius: 10
+      stroke-width: 4
+      stroke: "#97a97c"
+      fill: "#cfe1b9"
+      shadow: true
+    }
+  }
+  java: {
+    style: {
+      fill: "#f9c784"
+      stroke-width: 4
+      stroke: "#c98a5f"
+    }
+  }
+  python: {
+    style: {
+      border-radius: 10
+      stroke-width: 4
+      stroke: "#97a97c"
+      fill: "#cfe1b9"
+      shadow: true
+    }
+  }
+  dag: {
+    shape: step
+    width: 200
+    height: 100
+    style: {
+      border-radius: 10
+      stroke-width: 4
+      stroke: "#97a97c"
+      fill: "#cfe1b9"
+      shadow: true
+    }
+  }
+  devops: {
+    style: {
+      fill: "#343a40"
+      font-color: white
+    }
+  }
+  cpp: {
+    style: {
+      fill: "#e9ecef"
+      stroke: "#c9cdd1"
+      stroke-width: 4
+    }
+  }
+  qu: {
+    shape: queue
+    width: 200
+    height: 100
+    style: {
+      fill: "#b6ccfe"
+      stroke: "#9bb1ff"
+      stroke-width: 4
+      shadow: true
+    }
+  }
+  g: {
+    label.near: outside-top-center
+    style: {
+      stroke-width: 0
+      fill: lavender
+      border-radius: 10
+    }
+  }
+}
+
+py_*: {class: [base; python]}
+*.py_*: {class: [base; python]}
+**.py_*: {class: [base; python]}
+
+dag_*: {class: [python; dag]}
+*.dag_*: {class: [python; dag]}
+**.dag_*: {class: [python; dag]}
+
+ops_*: {class: [base; devops]}
+*.ops_*: {class: [base; devops]}
+**.ops_*: {class: [base; devops]}
+
+mf_*: {class: front}
+*.mf_*: {class: front}
+**.mf_*: {class: front}
+
+ex_*: {class: external}
+*.ex_*: {class: external}
+**.ex_*: {class: external}
+
+db_*: {class: database}
+*.db_*: {class: database}
+**.db_*: {class: database}
+
+*_user: {class: [base; user]}
+*.*_user: {class: [base; user]}
+**.*_user: {class: [base; user]}
+
+cpp_*: {class: [base; cpp]}
+*.cpp_*: {class: [base; cpp]}
+**.cpp_*: {class: [base; cpp]}
+
+j_*: {class: [base; java]}
+*.j_*: {class: [base; java]}
+**.j_*: {class: [base; java]}
+
+qu_*: {class: qu}
+*.qu_*: {class: qu}
+**.qu_*: {class: qu}
+
+g_*: {class: g}
+*.g_*: {class: g}
+**.g_*: {class: g}

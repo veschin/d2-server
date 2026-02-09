@@ -9,7 +9,9 @@
             [ring.middleware.params :as params]
             [ring.middleware.multipart-params :as multipart])
   (:gen-class)
-  (:import [org.apache.commons.lang3 StringEscapeUtils]))
+  (:import [org.apache.commons.lang3 StringEscapeUtils]
+           [java.nio.file Files]
+           [java.security MessageDigest]))
 
 (defn fetch-preset
   "Fetch preset D2 code from URL"
@@ -20,11 +22,34 @@
       (println "Error fetching preset:" (.getMessage e))
       "")))
 
+(defn content-hash
+  "Generate a short hash from string content for unique filenames"
+  [s]
+  (let [digest (MessageDigest/getInstance "SHA-256")
+        hash-bytes (.digest digest (.getBytes s "UTF-8"))]
+    (subs (apply str (map #(format "%02x" %) hash-bytes)) 0 12)))
+
+(defn unique-suffix []
+  (str (System/currentTimeMillis) "-" (rand-int 100000)))
+
+(defn extract-resource-to-file
+  "Extract a classpath resource to a persistent temp file, returns path string"
+  [resource-path]
+  (when-let [res (io/resource resource-path)]
+    (let [temp-file (java.io.File/createTempFile "d2-font-" ".ttf")]
+      (.deleteOnExit temp-file)
+      (with-open [in (io/input-stream res)]
+        (io/copy in temp-file))
+      (.getAbsolutePath temp-file))))
+
+(def font-path
+  (delay (extract-resource-to-file "Agave-Regular-slashed.ttf")))
+
 (defn format-d2-code
   "Format D2 code using d2 fmt"
   [d2-code]
   (let [temp-dir (System/getProperty "java.io.tmpdir")
-        input-file (str temp-dir "/format-input-" (System/currentTimeMillis) ".d2")]
+        input-file (str temp-dir "/format-input-" (unique-suffix) ".d2")]
     (try
       ;; Write D2 code to temp file
       (spit input-file d2-code)
@@ -54,38 +79,48 @@
 
 (defn render-d2
   "Renders D2 code to SVG or PNG using d2 binary"
-  [d2-code format & {:keys [theme layout preset-url sketch scale]
-                     :or {theme 0 layout "dagre" sketch false scale 1.0}}]
+  [d2-code format & {:keys [theme layout preset-url sketch scale no-default-styles]
+                     :or {theme 0 layout "dagre" sketch false scale 1.0 no-default-styles false}}]
   (let [temp-dir (System/getProperty "java.io.tmpdir")
-        input-file (str temp-dir "/input-" (System/currentTimeMillis) ".d2")
-        output-file (str temp-dir "/output-" (System/currentTimeMillis) "." format)
-        ;; Decode HTML entities and combine preset and user code
+        suffix (unique-suffix)
+        input-file (str temp-dir "/input-" suffix ".d2")
+        output-file (str temp-dir "/output-" suffix "." format)
+        ;; Decode HTML entities and combine default-styles, preset and user code
         decoded-d2-code (decode-html-entities d2-code)
         preset-code (if preset-url (fetch-preset preset-url) "")
-        combined-code (if (empty? preset-code)
-                        decoded-d2-code
-                        (str preset-code "\n\n" decoded-d2-code))]
+        default-styles-resource (when-not no-default-styles
+                                  (io/resource "d2server/default-styles.d2"))
+        default-styles (if default-styles-resource (slurp default-styles-resource) "")
+        combined-code (str default-styles
+                           (when-not (empty? default-styles) "\n\n")
+                           (when-not (empty? preset-code) preset-code)
+                           (when-not (empty? preset-code) "\n\n")
+                           decoded-d2-code)
+        file-hash (content-hash d2-code)]
     (try
       ;; Write combined D2 code to temp file
       (spit input-file combined-code)
 
-       ;; Execute d2 command
-      (let [cmd (cond-> ["d2"
+      ;; Execute d2 command
+      (let [font @font-path
+            cmd (cond-> ["d2"
                          "--theme" (str theme)
                          "--layout" layout]
+                  font (into ["--font-regular" font
+                              "--font-bold" font
+                              "--font-italic" font
+                              "--font-semibold" font])
                   sketch (conj "--sketch")
                   (not= scale 1.0) (conj "--scale" (str scale))
                   true (conj input-file output-file))
             result (apply shell/sh cmd)]
 
         (if (= 0 (:exit result))
-          ;; Success - read and return the output file
-          (let [output-bytes (with-open [in (io/input-stream output-file)]
-                               (let [buffer (byte-array (.available in))]
-                                 (.read in buffer)
-                                 buffer))]
+          ;; Success - read output file reliably using NIO
+          (let [output-bytes (Files/readAllBytes (.toPath (io/file output-file)))]
             {:success true
              :data output-bytes
+             :filename (str "d2-" file-hash "." format)
              :content-type (case format
                              "svg" "image/svg+xml"
                              "png" "image/png"
@@ -135,7 +170,8 @@
         layout (get params "layout" "dagre")
         preset-url (get params "preset")
         sketch (= "true" (get params "sketch" "false"))
-        scale (Double/parseDouble (get params "scale" "1.0"))]
+        scale (Double/parseDouble (get params "scale" "1.0"))
+        no-default-styles (= "true" (get params "no-default-styles" "false"))]
 
     (if (empty? d2-code)
       (-> (response/response "Missing d2 parameter")
@@ -148,11 +184,14 @@
                               :layout layout
                               :preset-url preset-url
                               :sketch sketch
-                              :scale scale)]
+                              :scale scale
+                              :no-default-styles no-default-styles)]
         (if (:success result)
           (-> (response/response (java.io.ByteArrayInputStream. (:data result)))
               (response/content-type (:content-type result))
               (response/header "Access-Control-Allow-Origin" "*")
+              (response/header "Content-Disposition"
+                               (str "inline; filename=\"" (:filename result) "\""))
               (response/header "Cache-Control" "public, max-age=3600"))
           (-> (response/response (:error result))
               (response/status 500)
@@ -207,7 +246,7 @@
   (println "  GET /svg        - Render D2 as SVG")
   (println "  GET /png        - Render D2 as PNG")
   (println "  GET /format     - Format D2 code")
-  (println "Parameters: d2, theme, layout, preset")
+  (println "Parameters: d2, theme, layout, preset, sketch, scale, no-default-styles")
   (jetty/run-jetty app {:port port :join? false}))
 
 (defn -main

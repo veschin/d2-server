@@ -13,6 +13,7 @@ A Clojure-based server for rendering D2 diagrams and a Confluence user macro for
 - [x] format (enum: svg, png, default svg)
 - [x] direction (enum: up, left, right, down, default down)
 - [x] preset (string, URL to preset D2 code)
+- [x] no-default-styles (boolean, default false - disables C4-like default styles)
 
 ### API Endpoints
 - [x] POST /svg - Render SVG
@@ -40,6 +41,7 @@ A Clojure-based server for rendering D2 diagrams and a Confluence user macro for
 - format: Output format (svg/png, default svg)
 - direction: Diagram direction (up/left/right/down, default down)
 - preset: Preset D2 code URL (string)
+- no-default-styles: Disable C4-like default styles (boolean, default false)
 
 ## Build Instructions
 

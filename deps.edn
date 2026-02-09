@@ -1,4 +1,4 @@
-{:paths ["src"]
+{:paths ["src" "resources"]
  :deps  {org.clojure/clojure              {:mvn/version "1.11.1"}
          metosin/reitit-ring              {:mvn/version "0.9.1"}
          ring/ring-jetty-adapter          {:mvn/version "1.15.2"}

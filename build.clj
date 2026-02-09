@@ -18,8 +18,8 @@
                 :version "1.0.0"
                 :basis basis
                 :src-dirs ["src"]})
-  (println "Copying sources...")
-  (b/copy-dir {:src-dirs ["src"]
+  (println "Copying sources and resources...")
+  (b/copy-dir {:src-dirs ["src" "resources"]
                :target-dir class-dir})
   (println "Compiling Clojure code...")
   (b/compile-clj {:basis basis

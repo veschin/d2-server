@@ -32,6 +32,10 @@ docker-run:
 	@http --check-status --timeout=10 GET "http://localhost:$(DP_PORT)/svg?d2=a -> b" \
 		&& echo "\n/svg OK" || (echo "\n/svg FAILED"; make docker-stop; exit 1)
 
+	@echo "\n--- Testing Render PNG ---"
+	@http --check-status --timeout=30 --download GET "http://localhost:$(DP_PORT)/png?d2=a -> b" \
+		&& echo "\n/png OK" || (echo "\n/png FAILED"; make docker-stop; exit 1)
+
 	@echo "\n--- Testing Format ---"
 	@http --check-status --timeout=10 GET "http://localhost:$(DP_PORT)/format?d2=a->b" \
 		&& echo "\n/format OK" || (echo "\n/format FAILED"; make docker-stop; exit 1)
@@ -67,6 +71,10 @@ compose-test:
 	@echo "\n--- Testing Render SVG ---"
 	@http --check-status --timeout=10 GET "http://localhost:$(DP_PORT)/svg?d2=a -> b" \
 		&& echo "\n/svg OK" || (echo "\n/svg FAILED"; make compose-down; exit 1)
+
+	@echo "\n--- Testing Render PNG ---"
+	@http --check-status --timeout=30 --download GET "http://localhost:$(DP_PORT)/png?d2=a -> b" \
+		&& echo "\n/png OK" || (echo "\n/png FAILED"; make compose-down; exit 1)
 
 	@echo "\n--- Testing Format ---"
 	@http --check-status --timeout=10 GET "http://localhost:$(DP_PORT)/format?d2=a->b" \
