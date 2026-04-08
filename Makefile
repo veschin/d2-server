@@ -2,7 +2,7 @@
 DP_PORT ?= 3000
 CONTAINER_NAME = d2server-app
 
-.PHONY: run test uberjar docker-build docker-run docker-stop compose-up compose-down compose-test
+.PHONY: run test uberjar docker-build docker-export docker-run docker-stop compose-up compose-down compose-test
 
 run:
 	clj -M:run
@@ -15,6 +15,10 @@ uberjar:
 
 docker-build:
 	docker build -t d2server .
+
+docker-export: docker-build
+	@docker save d2server | gzip > /tmp/d2server.tar.gz
+	@echo "Exported to /tmp/d2server.tar.gz ($$(du -h /tmp/d2server.tar.gz | cut -f1))"
 
 # Runs the container, tests endpoints with httpie, and then stops the container.
 # Requires httpie to be installed (https://httpie.io/docs/cli/installation)
