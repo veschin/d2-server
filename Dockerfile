@@ -23,6 +23,8 @@ RUN apt-get update && \
 WORKDIR /app
 
 COPY --from=clj-builder /app/target/d2server.jar .
+COPY --from=clj-builder /app/resources/Agave-Regular-slashed.ttf /usr/share/fonts/Agave-Regular-slashed.ttf
+RUN fc-cache -f
 
 EXPOSE 3000
 

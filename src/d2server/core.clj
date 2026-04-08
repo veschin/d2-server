@@ -162,8 +162,11 @@
 
         (if (= 0 (:exit result))
           (if png-file
-            ;; PNG: convert SVG -> PNG via rsvg-convert
-            (let [convert-result (shell/sh "rsvg-convert" "-o" png-file svg-file)]
+            ;; PNG: replace d2's generated font names with system font for rsvg-convert
+            (let [svg-content (slurp svg-file)
+                  fixed-svg (str/replace svg-content #"d2-\d+-font-(?:regular|bold|italic|semibold)" "Agave")
+                  _ (spit svg-file fixed-svg)
+                  convert-result (shell/sh "rsvg-convert" "-o" png-file svg-file)]
               (if (= 0 (:exit convert-result))
                 (let [raw-bytes (Files/readAllBytes (.toPath (io/file png-file)))
                       output-bytes (embed-png-metadata raw-bytes d2-code)]
