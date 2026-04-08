@@ -1,13 +1,14 @@
+# syntax=docker/dockerfile:1
 FROM golang:alpine AS builder
-
-RUN apk add --no-cache git
 
 WORKDIR /app
 COPY go.mod go.sum ./
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
 
 COPY . .
-RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o d2server .
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 go build -ldflags="-s -w" -o d2server .
 
 FROM alpine:3.21
 
