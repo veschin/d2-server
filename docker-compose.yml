@@ -1,0 +1,7 @@
+services:
+  d2server:
+    build: .
+    container_name: d2server
+    network_mode: host
+    command: ["java", "-jar", "d2server.jar", "3333"]
+    restart: unless-stopped
