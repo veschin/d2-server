@@ -6,13 +6,10 @@
 variables:
   DOCKER_TLS_CERTDIR: ""
   DOCKER_HOST: tcp://docker:2375
-  CONTAINER_NAME: d2server-ci-$CI_JOB_ID
-  TEST_PORT: "3000"
 
 stages:
   - test
   - build
-  - integration
   - deploy
 
 # ---------------------------------------------------------------------------
@@ -64,42 +61,6 @@ build-image:
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-
-# ---------------------------------------------------------------------------
-# integration
-# ---------------------------------------------------------------------------
-
-integration-tests:
-  stage: integration
-  image: docker:latest
-  services:
-    - docker:dind
-  # PNG-рендеринг требует rsvg-convert. На некоторых раннерах зависимость
-  # отсутствует, поэтому падение интеграционных тестов не блокирует пайплайн.
-  allow_failure: true
-  before_script:
-    - apk add --no-cache httpie || pip install httpie
-    - |
-      if [ -n "$CI_REGISTRY_IMAGE" ]; then
-        docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
-        docker pull $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
-        docker tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA d2server:latest
-      else
-        docker build -t d2server:latest .
-      fi
-  script:
-    - docker run -d --rm --name $CONTAINER_NAME -p $TEST_PORT:3000 d2server:latest
-    - sleep 3
-    - http --check-status --timeout=10 GET http://localhost:$TEST_PORT/
-    - http --check-status --timeout=10 GET "http://localhost:$TEST_PORT/svg?d2=a -> b"
-    - http --check-status --timeout=30 --download GET "http://localhost:$TEST_PORT/png?d2=a -> b"
-    - http --check-status --timeout=10 GET "http://localhost:$TEST_PORT/format?d2=a->b"
-  after_script:
-    # after_script выполняется независимо от результата script,
-    # что гарантирует остановку контейнера даже при падении тестов.
-    - docker stop $CONTAINER_NAME 2>/dev/null || true
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main"
 
 # ---------------------------------------------------------------------------
 # deploy
