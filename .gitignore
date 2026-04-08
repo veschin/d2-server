@@ -1,6 +1,17 @@
-.lsp
-.clj-kondo
-.cpcache
+# Go
+d2server
+*.exe
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+
+# Clojure (legacy)
 target/
 classes/
-.nrepl-port
+.cpcache/
+.clj-kondo/
+.lsp/

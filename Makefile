@@ -2,16 +2,16 @@
 DP_PORT ?= 3000
 CONTAINER_NAME = d2server-app
 
-.PHONY: run test uberjar docker-build docker-export docker-run docker-stop compose-up compose-down compose-test
+.PHONY: run test build docker-build docker-export docker-run docker-stop compose-up compose-down compose-test push push-gitlab push-all
 
 run:
-	clj -M:run
+	go run . $(DP_PORT)
 
 test:
-	clj -M:test
+	go test ./...
 
-uberjar:
-	clj -T:build uber
+build:
+	go build -o d2server .
 
 docker-build:
 	docker build -t d2server .
@@ -26,7 +26,7 @@ docker-run:
 	@echo "--- Starting container [$(CONTAINER_NAME)] for testing ---"
 	@docker run -d --rm --name $(CONTAINER_NAME) -p $(DP_PORT):3000 d2server
 	@echo "Waiting for server to initialize..."
-	@sleep 5
+	@sleep 2
 
 	@echo "\n--- Testing Health Endpoint ---"
 	@http --check-status --timeout=10 GET http://localhost:$(DP_PORT)/ \
@@ -66,7 +66,7 @@ compose-test:
 	@echo "--- Starting services for testing ---"
 	@docker compose up -d
 	@echo "Waiting for service to initialize..."
-	@sleep 10
+	@sleep 2
 
 	@echo "\n--- Testing Health Endpoint ---"
 	@http --check-status --timeout=10 GET http://localhost:$(DP_PORT)/ \
@@ -87,3 +87,10 @@ compose-test:
 	@echo "\n--- All tests passed, stopping services ---"
 	@make compose-down
 
+push:
+	git push origin main
+
+push-gitlab:
+	git push gitlab main
+
+push-all: push push-gitlab

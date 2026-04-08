@@ -1,31 +1,24 @@
-# Build Clojure application
-FROM clojure:tools-deps-trixie AS clj-builder
+FROM golang:1.23-alpine AS builder
+
+RUN apk add --no-cache git
 
 WORKDIR /app
-
-COPY deps.edn .
-RUN clj -P
+COPY go.mod go.sum ./
+RUN go mod download
 
 COPY . .
-RUN clj -T:build uber
+RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o d2server .
 
-# Final image
-FROM eclipse-temurin:21-jre
+FROM alpine:3.21
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends curl make librsvg2-bin \
-    fonts-liberation fonts-noto-color-emoji && \
-    curl -fsSL https://d2lang.com/install.sh | sh && \
-    apt-get remove -y curl make && \
-    apt-get autoremove -y && \
-    rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache librsvg fontconfig
 
 WORKDIR /app
 
-COPY --from=clj-builder /app/target/d2server.jar .
-COPY --from=clj-builder /app/resources/Agave-Regular-slashed.ttf /usr/share/fonts/Agave-Regular-slashed.ttf
+COPY --from=builder /app/d2server .
+COPY --from=builder /app/resources/Agave-Regular-slashed.ttf /usr/share/fonts/
 RUN fc-cache -f
 
 EXPOSE 3000
 
-CMD ["java", "-jar", "d2server.jar"]
+ENTRYPOINT ["./d2server"]
