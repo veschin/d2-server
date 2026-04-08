@@ -1,0 +1,135 @@
+# Тип исполнителя на gitlab.akb-it.ru неизвестен. Docker-in-Docker объявлен как сервис,
+# но при shell-executor сервис игнорируется, а docker-команды исполняются напрямую.
+# Переменная DOCKER_TLS_CERTDIR отключает TLS, необходимый при dind >= 19.03
+# (иначе клиент не находит сокет и сборка падает).
+
+variables:
+  DOCKER_TLS_CERTDIR: ""
+  DOCKER_HOST: tcp://docker:2375
+  CONTAINER_NAME: d2server-ci-$CI_JOB_ID
+  TEST_PORT: "3000"
+
+stages:
+  - test
+  - build
+  - integration
+  - deploy
+
+# ---------------------------------------------------------------------------
+# test
+# ---------------------------------------------------------------------------
+
+unit-tests:
+  stage: test
+  image: golang:alpine
+  variables:
+    # Кеш модулей привязан к содержимому go.sum, а не к ветке -
+    # пересборка не требуется при неизменных зависимостях.
+    GOPATH: $CI_PROJECT_DIR/.gopath
+  cache:
+    key:
+      files:
+        - go.sum
+    paths:
+      - .gopath/pkg/mod
+  script:
+    - go test ./...
+
+# ---------------------------------------------------------------------------
+# build
+# ---------------------------------------------------------------------------
+
+build-image:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  before_script:
+    # Реестр доступен только при наличии переменной CI_REGISTRY_IMAGE.
+    # В случае отсутствия реестра образ остаётся локальным и используется
+    # только на том же раннере в integration-стадии.
+    - |
+      if [ -n "$CI_REGISTRY" ]; then
+        docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+      fi
+  script:
+    - docker build -t d2server:$CI_COMMIT_SHORT_SHA -t d2server:latest .
+    - |
+      if [ -n "$CI_REGISTRY_IMAGE" ]; then
+        docker tag d2server:$CI_COMMIT_SHORT_SHA $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
+        docker tag d2server:latest $CI_REGISTRY_IMAGE:latest
+        docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
+        docker push $CI_REGISTRY_IMAGE:latest
+      fi
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+# ---------------------------------------------------------------------------
+# integration
+# ---------------------------------------------------------------------------
+
+integration-tests:
+  stage: integration
+  image: docker:latest
+  services:
+    - docker:dind
+  # PNG-рендеринг требует rsvg-convert. На некоторых раннерах зависимость
+  # отсутствует, поэтому падение интеграционных тестов не блокирует пайплайн.
+  allow_failure: true
+  before_script:
+    - apk add --no-cache httpie || pip install httpie
+    - |
+      if [ -n "$CI_REGISTRY_IMAGE" ]; then
+        docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+        docker pull $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
+        docker tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA d2server:latest
+      else
+        docker build -t d2server:latest .
+      fi
+  script:
+    - docker run -d --rm --name $CONTAINER_NAME -p $TEST_PORT:3000 d2server:latest
+    - sleep 3
+    - http --check-status --timeout=10 GET http://localhost:$TEST_PORT/
+    - http --check-status --timeout=10 GET "http://localhost:$TEST_PORT/svg?d2=a -> b"
+    - http --check-status --timeout=30 --download GET "http://localhost:$TEST_PORT/png?d2=a -> b"
+    - http --check-status --timeout=10 GET "http://localhost:$TEST_PORT/format?d2=a->b"
+  after_script:
+    # after_script выполняется независимо от результата script,
+    # что гарантирует остановку контейнера даже при падении тестов.
+    - docker stop $CONTAINER_NAME 2>/dev/null || true
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+
+# ---------------------------------------------------------------------------
+# deploy
+# ---------------------------------------------------------------------------
+
+deploy:
+  stage: deploy
+  image: docker:latest
+  services:
+    - docker:dind
+  # Механизм деплоя зависит от инфраструктуры и определяется позже.
+  # Текущая реализация: сохранение образа как tar.gz-артефакта GitLab.
+  # Тег :release служит стабильной меткой последнего задеплоенного образа.
+  script:
+    - |
+      if [ -n "$CI_REGISTRY_IMAGE" ]; then
+        docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+        docker pull $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
+        docker tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA $CI_REGISTRY_IMAGE:release
+        docker push $CI_REGISTRY_IMAGE:release
+        docker save $CI_REGISTRY_IMAGE:release | gzip > d2server-release.tar.gz
+      else
+        docker build -t d2server:release .
+        docker save d2server:release | gzip > d2server-release.tar.gz
+      fi
+  artifacts:
+    name: d2server-$CI_COMMIT_SHORT_SHA
+    paths:
+      - d2server-release.tar.gz
+    expire_in: 7 days
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: manual
