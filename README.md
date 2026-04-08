@@ -1,76 +1,75 @@
-# D2 Server and Confluence Macro
+# D2 Server
 
-A Clojure-based server for rendering D2 diagrams and a Confluence user macro for embedding them.
+Microservice for rendering D2 diagrams. Confluence user macro included.
 
-## Roadmap
+## Quick Start
 
-### D2 Parameters Support
-- [x] theme (int, default 1)
-- [x] layout (enum: dagre, elk, default elk)
-- [x] server (string, default http://localhost:3000)
-- [x] sketch (boolean, default false)
-- [x] scale (float, default 0.8)
-- [x] format (enum: svg, png, default svg)
-- [x] direction (enum: up, left, right, down, default down)
-- [x] preset (string, URL to preset D2 code)
-- [x] no-default-styles (boolean, default false - disables C4-like default styles)
-
-### API Endpoints
-- [x] POST /svg - Render SVG
-- [x] POST /png - Render PNG
-- [x] POST /format - Format D2 code
-
-### Other Features
-- [x] HTML entity decoding for D2 code
-- [x] Multipart form data handling
-- [x] Confluence user macro integration
-- [x] Error handling and CORS support
-- [x] D2 binary integration
-- [x] Zoom panel with pan for SVG diagrams
-- [x] Download buttons for SVG/PNG formats
-- [x] Status display of current parameters
-- [x] Improved error handling with network error detection
-
-## Macro Parameters
-
-- theme: D2 theme ID (int, default 1)
-- layout: Layout engine (dagre/elk, default elk)
-- server: Server URL (string, default http://localhost:3000)
-- sketch: Render as sketch (boolean, default false)
-- scale: Scale factor (string, default 0.8)
-- format: Output format (svg/png, default svg)
-- direction: Diagram direction (up/left/right/down, default down)
-- preset: Preset D2 code URL (string)
-- no-default-styles: Disable C4-like default styles (boolean, default false)
-
-## Build Instructions
-
-### Development
-
-Run the server locally:
-```
-make run
+```bash
+make build && ./d2server              # localhost:3000
+make docker-build && make docker-run  # Docker with integration tests
 ```
 
-### Production Build
+## API Endpoints
 
-Build uberjar:
-```
-make uberjar
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | / | Health check |
+| GET, POST | /svg | Render SVG |
+| GET, POST | /png | Render PNG |
+| GET, POST | /render | Render (format via param) |
+| GET, POST | /format | Format D2 code |
+| POST | /extract | Extract D2 source from PNG metadata |
+
+## Render Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| d2 | string | required | D2 diagram source |
+| format | enum | svg | Output format: `svg`, `png` |
+| theme | int | 1 | D2 theme ID |
+| layout | enum | dagre | Layout engine: `dagre`, `elk` |
+| sketch | bool | false | Sketch rendering mode |
+| scale | float | 1.0 | Scale factor |
+| preset | string | - | URL to preset D2 snippet |
+| no-default-styles | bool | false | Disable C4-like default styles |
+
+## Confluence Macro
+
+`macro.vtl` provides a Confluence user macro for embedding rendered diagrams. Parameters: `theme`, `layout`, `server`, `sketch`, `scale`, `format`, `direction`, `preset`, `no-default-styles`. Diagram source is entered as macro body. Client-side caching via IndexedDB with SHA-256 content hashing.
+
+## Docker
+
+```bash
+make docker-build    # Build image (~76MB, Alpine-based)
+make docker-run      # Build + run integration tests
+make compose-test    # Same via Docker Compose
 ```
 
-### Docker
+`docker-compose.yml` exposes port 3333 with host networking. Memory usage under load: ~50MB.
 
-Build Docker image:
-```
-make docker-build
-```
+## Development
 
-Run and test Docker container:
-```
-make docker-run
+```bash
+make run     # Dev server on :3000
+make test    # go test ./...
+make build   # Compile binary
 ```
 
-## Known Issues
+Startup time: <50ms.
 
-- GraalVM native image build is currently not working
+## Architecture
+
+| Package | Responsibility |
+|---------|---------------|
+| `main.go` | Entrypoint, embedded resources |
+| `internal/render` | D2 library (in-process) + rsvg-convert for PNG |
+| `internal/server` | HTTP handlers, parameter parsing, CORS |
+| `internal/format` | D2 code formatting |
+| `internal/pngmeta` | PNG metadata read/write |
+
+SVG rendering uses the D2 Go library directly - no CLI subprocess. PNG output pipes SVG through `rsvg-convert`.
+
+## Requirements
+
+- Go 1.22+
+- `rsvg-convert` (librsvg) - required for PNG output
