@@ -11,7 +11,10 @@
   (:gen-class)
   (:import [org.apache.commons.lang3 StringEscapeUtils]
            [java.nio.file Files]
-           [java.security MessageDigest]))
+           [java.security MessageDigest]
+           [javax.imageio ImageIO IIOImage]
+           [javax.imageio.metadata IIOMetadataNode]
+           [java.io ByteArrayInputStream ByteArrayOutputStream]))
 
 (defn fetch-preset
   "Fetch preset D2 code from URL"
@@ -77,6 +80,47 @@
   [s]
   (StringEscapeUtils/unescapeHtml4 s))
 
+(defn embed-png-metadata
+  "Embed D2 source code into PNG tEXt metadata chunk"
+  [^bytes png-bytes d2-source]
+  (let [reader (.next (ImageIO/getImageReadersByFormatName "png"))
+        _ (.setInput reader (ImageIO/createImageInputStream (ByteArrayInputStream. png-bytes)))
+        image (.read reader 0)
+        metadata (.getImageMetadata reader 0)
+        text-entry (doto (IIOMetadataNode. "tEXtEntry")
+                     (.setAttribute "keyword" "d2-source")
+                     (.setAttribute "value" d2-source))
+        text-node (doto (IIOMetadataNode. "tEXt")
+                    (.appendChild text-entry))
+        root (doto (IIOMetadataNode. "javax_imageio_png_1.0")
+               (.appendChild text-node))
+        _ (.mergeTree metadata "javax_imageio_png_1.0" root)
+        baos (ByteArrayOutputStream.)
+        ios (ImageIO/createImageOutputStream baos)
+        writer (.next (ImageIO/getImageWritersByFormatName "png"))]
+    (.setOutput writer ios)
+    (.write writer nil (IIOImage. image nil metadata) nil)
+    (.close ios)
+    (.dispose writer)
+    (.dispose reader)
+    (.toByteArray baos)))
+
+(defn extract-png-metadata
+  "Extract D2 source code from PNG tEXt metadata chunk"
+  [^bytes png-bytes]
+  (let [reader (.next (ImageIO/getImageReadersByFormatName "png"))
+        _ (.setInput reader (ImageIO/createImageInputStream (ByteArrayInputStream. png-bytes)))
+        metadata (.getImageMetadata reader 0)
+        tree (.getAsTree metadata "javax_imageio_png_1.0")
+        text-node (let [nodes (.getElementsByTagName tree "tEXtEntry")
+                        len (.getLength nodes)]
+                    (first (for [i (range len)
+                                 :let [node (.item nodes i)]
+                                 :when (= "d2-source" (.getAttribute node "keyword"))]
+                             (.getAttribute node "value"))))]
+    (.dispose reader)
+    text-node))
+
 (defn render-d2
   "Renders D2 code to SVG or PNG using d2 binary"
   [d2-code format & {:keys [theme layout preset-url sketch scale no-default-styles]
@@ -84,7 +128,8 @@
   (let [temp-dir (System/getProperty "java.io.tmpdir")
         suffix (unique-suffix)
         input-file (str temp-dir "/input-" suffix ".d2")
-        output-file (str temp-dir "/output-" suffix "." format)
+        svg-file (str temp-dir "/output-" suffix ".svg")
+        png-file (when (= format "png") (str temp-dir "/output-" suffix ".png"))
         ;; Decode HTML entities and combine default-styles, preset and user code
         decoded-d2-code (decode-html-entities d2-code)
         preset-code (if preset-url (fetch-preset preset-url) "")
@@ -112,19 +157,28 @@
                               "--font-semibold" font])
                   sketch (conj "--sketch")
                   (not= scale 1.0) (conj "--scale" (str scale))
-                  true (conj input-file output-file))
+                  true (conj input-file svg-file))
             result (apply shell/sh cmd)]
 
         (if (= 0 (:exit result))
-          ;; Success - read output file reliably using NIO
-          (let [output-bytes (Files/readAllBytes (.toPath (io/file output-file)))]
-            {:success true
-             :data output-bytes
-             :filename (str "d2-" file-hash "." format)
-             :content-type (case format
-                             "svg" "image/svg+xml"
-                             "png" "image/png"
-                             "application/octet-stream")})
+          (if png-file
+            ;; PNG: convert SVG -> PNG via rsvg-convert
+            (let [convert-result (shell/sh "rsvg-convert" "-o" png-file svg-file)]
+              (if (= 0 (:exit convert-result))
+                (let [raw-bytes (Files/readAllBytes (.toPath (io/file png-file)))
+                      output-bytes (embed-png-metadata raw-bytes d2-code)]
+                  {:success true
+                   :data output-bytes
+                   :filename (str "d2-" file-hash ".png")
+                   :content-type "image/png"})
+                {:success false
+                 :error (str "PNG conversion failed:\n" (:err convert-result))}))
+            ;; SVG: read d2 output directly
+            (let [output-bytes (Files/readAllBytes (.toPath (io/file svg-file)))]
+              {:success true
+               :data output-bytes
+               :filename (str "d2-" file-hash ".svg")
+               :content-type "image/svg+xml"}))
           ;; Error - include both stderr and stdout
           {:success false
            :error (str "D2 rendering failed (exit code " (:exit result) "):\n"
@@ -136,10 +190,10 @@
          :error (.getMessage e)})
 
       (finally
-        ;; Cleanup temp files
         (try
           (io/delete-file input-file true)
-          (io/delete-file output-file true)
+          (io/delete-file svg-file true)
+          (when png-file (io/delete-file png-file true))
           (catch Exception _))))))
 
 (defn parse-params
@@ -222,6 +276,29 @@
             (response/content-type "text/plain")
             (response/header "Access-Control-Allow-Origin" "*"))))))
 
+(defn handle-extract
+  "Extract D2 source code from PNG metadata"
+  [request]
+  (let [multipart-params (or (:multipart-params request) {})
+        file-entry (get multipart-params "file")]
+    (if (and file-entry (map? file-entry))
+      (let [png-bytes (Files/readAllBytes (.toPath (:tempfile file-entry)))
+            d2-source (try
+                        (extract-png-metadata png-bytes)
+                        (catch Exception _ nil))]
+        (if d2-source
+          (-> (response/response d2-source)
+              (response/content-type "text/plain; charset=utf-8")
+              (response/header "Access-Control-Allow-Origin" "*"))
+          (-> (response/response "No D2 source found in PNG metadata")
+              (response/status 404)
+              (response/content-type "text/plain")
+              (response/header "Access-Control-Allow-Origin" "*"))))
+      (-> (response/response "Missing file parameter (multipart upload required)")
+          (response/status 400)
+          (response/content-type "text/plain")
+          (response/header "Access-Control-Allow-Origin" "*")))))
+
 (def app
   (-> (ring/ring-handler
        (ring/router
@@ -231,7 +308,8 @@
                   :post #(handle-render (assoc-in % [:params "format"] "svg"))}]
          ["/png" {:get #(handle-render (assoc-in % [:params "format"] "png"))
                   :post #(handle-render (assoc-in % [:params "format"] "png"))}]
-         ["/format" {:get handle-format :post handle-format}]])
+         ["/format" {:get handle-format :post handle-format}]
+         ["/extract" {:post handle-extract}]])
        (ring/create-default-handler))
       multipart/wrap-multipart-params
       params/wrap-params))
@@ -246,6 +324,7 @@
   (println "  GET /svg        - Render D2 as SVG")
   (println "  GET /png        - Render D2 as PNG")
   (println "  GET /format     - Format D2 code")
+  (println "  POST /extract   - Extract D2 source from PNG")
   (println "Parameters: d2, theme, layout, preset, sketch, scale, no-default-styles")
   (jetty/run-jetty app {:port port :join? false}))
 
