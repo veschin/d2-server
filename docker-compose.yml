@@ -3,5 +3,5 @@ services:
     build: .
     container_name: d2server
     network_mode: host
-    command: ["./d2server", "3333"]
+    command: ["3333"]
     restart: unless-stopped
