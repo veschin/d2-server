@@ -12,13 +12,15 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 
 FROM alpine:3.21
 
-RUN apk add --no-cache librsvg fontconfig
-
 WORKDIR /app
+
+COPY resources/rsvg-convert.tar.gz /tmp/
+RUN tar xzf /tmp/rsvg-convert.tar.gz -C / \
+    && rm /tmp/rsvg-convert.tar.gz
 
 COPY --from=builder /app/d2server .
 COPY --from=builder /app/resources/Agave-Regular-slashed.ttf /usr/share/fonts/
-RUN fc-cache -f
+RUN /bin/fc-cache -f
 
 EXPOSE 3000
 
