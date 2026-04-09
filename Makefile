@@ -1,8 +1,8 @@
 # Default port, can be overridden e.g., `make DP_PORT=9090 docker-run`
-DP_PORT ?= 3000
+DP_PORT ?= 3333
 CONTAINER_NAME = d2server-app
 
-.PHONY: run test build docker-build docker-export docker-run docker-stop compose-up compose-down compose-test push push-gitlab push-all
+.PHONY: run test build docker-build docker-export docker-run docker-test docker-stop compose-up compose-down compose-test push push-gitlab push-all
 
 run:
 	go run . $(DP_PORT)
@@ -20,9 +20,12 @@ docker-export: docker-build
 	@docker save d2server | gzip > /tmp/d2server.tar.gz
 	@echo "Exported to /tmp/d2server.tar.gz ($$(du -h /tmp/d2server.tar.gz | cut -f1))"
 
-# Runs the container, tests endpoints with httpie, and then stops the container.
-# Requires httpie to be installed (https://httpie.io/docs/cli/installation)
-docker-run:
+docker-run: docker-build
+	@docker run -d --rm --name $(CONTAINER_NAME) -p $(DP_PORT):3000 d2server
+	@echo "Container [$(CONTAINER_NAME)] started: http://localhost:$(DP_PORT)"
+
+# Requires httpie (https://httpie.io/docs/cli/installation)
+docker-test: docker-build
 	@echo "--- Starting container [$(CONTAINER_NAME)] for testing ---"
 	@docker run -d --rm --name $(CONTAINER_NAME) -p $(DP_PORT):3000 d2server
 	@echo "Waiting for server to initialize..."

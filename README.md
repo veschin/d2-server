@@ -5,8 +5,7 @@ Microservice for rendering D2 diagrams. Confluence user macro included.
 ## Quick Start
 
 ```bash
-make build && ./d2server              # localhost:3000
-make docker-build && make docker-run  # Docker with integration tests
+make docker-run  # build + start on localhost:3333
 ```
 
 ## API Endpoints
@@ -41,7 +40,8 @@ make docker-build && make docker-run  # Docker with integration tests
 
 ```bash
 make docker-build    # Build image (~76MB, Alpine-based)
-make docker-run      # Build + run integration tests
+make docker-run      # Build + start container as daemon
+make docker-test     # Build, start, run integration tests, stop
 make compose-test    # Same via Docker Compose
 ```
 
@@ -50,7 +50,7 @@ make compose-test    # Same via Docker Compose
 ## Development
 
 ```bash
-make run     # Dev server on :3000
+make run     # Dev server on :3333
 make test    # go test ./...
 make build   # Compile binary
 ```
@@ -72,4 +72,4 @@ SVG rendering uses the D2 Go library directly - no CLI subprocess. PNG output pi
 ## Requirements
 
 - Go 1.22+
-- `rsvg-convert` (librsvg) - required for PNG output
+- `rsvg-convert` (librsvg) - required for PNG output in local development (bundled in Docker image)
